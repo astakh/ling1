@@ -115,6 +115,7 @@ const TOPICS = [
 ];
 
 const LANGUAGES = [
+  { code: 'ru', name: 'Russian', nativeName: 'Русский' },
   { code: 'en', name: 'English', nativeName: 'English' },
   { code: 'de', name: 'German', nativeName: 'Deutsch' },
   { code: 'fr', name: 'French', nativeName: 'Français' },
@@ -180,6 +181,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setState(prev => ({
         ...prev,
         isAuthenticated: true,
+        isOnboarded: true, // При входе считаем, что онбординг пройден
         useMockData: false,
         user: prev.user || {
           id: '1',
@@ -204,6 +206,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setState(prev => ({
         ...prev,
         isAuthenticated: true,
+        isOnboarded: true, // При входе считаем, что онбординг пройден
         useMockData: true,
         user: prev.user || {
           id: '1',

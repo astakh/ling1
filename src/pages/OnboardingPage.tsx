@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp, LANGUAGES, CEFR_LEVELS } from '../store';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ArrowLeft, Globe, BookOpen, Target, Zap } from 'lucide-react';
@@ -11,6 +12,7 @@ const INTENSITY_PRESETS = [
 
 export function OnboardingPage() {
   const { completeOnboarding } = useApp();
+  const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [nativeLang, setNativeLang] = useState('ru');
   const [learningLang, setLearningLang] = useState('en');
@@ -27,6 +29,7 @@ export function OnboardingPage() {
   const handleComplete = () => {
     const preset = INTENSITY_PRESETS[intensityIdx];
     completeOnboarding(nativeLang, learningLang, level, preset.newWords, preset.reviews);
+    navigate('/dashboard');
   };
 
   const canProceed = () => {
