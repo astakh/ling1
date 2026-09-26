@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Flame, BookOpen, TrendingUp, Plus, BarChart3, Settings, LogOut, Clock } from 'lucide-react';
 
 export function DashboardPage() {
-  const { user, wordProgress, logout } = useApp();
+  const { user, wordProgress, logout, useMockData } = useApp();
   const navigate = useNavigate();
 
   if (!user) return null;
@@ -33,6 +33,11 @@ export function DashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {useMockData && (
+              <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">
+                Демо-режим
+              </span>
+            )}
             <button onClick={() => navigate('/add-word')} className="p-2 rounded-lg hover:bg-gray-100 transition-colors" title="Добавить слово">
               <Plus className="w-5 h-5 text-gray-600" />
             </button>

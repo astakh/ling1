@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { apiClient } from './api';
 
 // Types
 export interface User {
@@ -42,6 +43,7 @@ export interface LessonCard {
 
 export interface LessonSession {
   id: string;
+  sessionId: number; // Backend session ID
   topic: string;
   cards: LessonCard[];
   currentIndex: number;
@@ -56,23 +58,24 @@ interface AppState {
   currentLesson: LessonSession | null;
   isAuthenticated: boolean;
   isOnboarded: boolean;
+  useMockData: boolean; // Флаг для демо-режима
 }
 
 interface AppContextType extends AppState {
-  login: (email: string) => void;
-  register: (email: string) => void;
+  login: (email: string, password?: string) => Promise<void>;
+  register: (email: string, password?: string) => Promise<void>;
   logout: () => void;
   completeOnboarding: (nativeLang: string, learningLang: string, level: string, newWords: number, reviews: number) => void;
-  startLesson: (topic: string) => void;
-  submitAnswer: (cardIndex: number, translation: string, evaluations: { word: string; correct: boolean }[]) => void;
-  finishLesson: () => void;
-  addCustomWord: (text: string, translation: string) => void;
+  startLesson: (topic: string) => Promise<void>;
+  submitAnswer: (cardIndex: number, translation: string, evaluations: { word: string; correct: boolean }[]) => Promise<void>;
+  finishLesson: () => Promise<void>;
+  addCustomWord: (text: string, translation: string) => Promise<void>;
   updateSettings: (settings: Partial<User>) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
 
-// Mock data for lessons
+// Mock data for lessons (fallback)
 const MOCK_SENTENCES: Record<string, { sentence: string; translation: string; targetWords: string[] }[]> = {
   'food': [
     { sentence: 'I would like to order a delicious meal at this restaurant.', translation: 'Я хотел бы заказать восхитительное блюдо в этом ресторанте.', targetWords: ['order', 'delicious', 'meal'] },
@@ -155,6 +158,7 @@ function loadState(): AppState {
     currentLesson: null,
     isAuthenticated: false,
     isOnboarded: false,
+    useMockData: true, // По умолчанию демо-режим
   };
 }
 
@@ -169,59 +173,117 @@ export function AppProvider({ children }: { children: ReactNode }) {
     saveState(state);
   }, [state]);
 
-  const login = (email: string) => {
-    setState(prev => ({
-      ...prev,
-      isAuthenticated: true,
-      user: prev.user || {
-        id: '1',
-        email,
-        nativeLanguage: 'ru',
-        learningLanguage: 'en',
-        cefrLevel: 'B1',
-        intensityNewWords: 5,
-        intensityReviews: 20,
-        subscriptionStatus: 'trial',
-        trialExpiresAt: new Date(Date.now() + 86400000 * 14).toISOString(),
-        streak: 5,
-        lastLessonDate: new Date(Date.now() - 86400000).toISOString(),
-        totalWordsLearned: 47,
-        createdAt: new Date().toISOString(),
-      },
-      wordProgress: prev.wordProgress.length ? prev.wordProgress : generateMockWordProgress(),
-    }));
+  const login = async (email: string, password: string = 'demo') => {
+    // Пытаемся войти через API
+    try {
+      await apiClient.login(email, password);
+      setState(prev => ({
+        ...prev,
+        isAuthenticated: true,
+        useMockData: false,
+        user: prev.user || {
+          id: '1',
+          email,
+          nativeLanguage: 'ru',
+          learningLanguage: 'en',
+          cefrLevel: 'B1',
+          intensityNewWords: 5,
+          intensityReviews: 20,
+          subscriptionStatus: 'trial',
+          trialExpiresAt: new Date(Date.now() + 86400000 * 14).toISOString(),
+          streak: 5,
+          lastLessonDate: new Date(Date.now() - 86400000).toISOString(),
+          totalWordsLearned: 47,
+          createdAt: new Date().toISOString(),
+        },
+        wordProgress: prev.wordProgress.length ? prev.wordProgress : generateMockWordProgress(),
+      }));
+    } catch (error) {
+      // Если API недоступен, используем демо-режим
+      console.warn('API unavailable, using mock data:', error);
+      setState(prev => ({
+        ...prev,
+        isAuthenticated: true,
+        useMockData: true,
+        user: prev.user || {
+          id: '1',
+          email,
+          nativeLanguage: 'ru',
+          learningLanguage: 'en',
+          cefrLevel: 'B1',
+          intensityNewWords: 5,
+          intensityReviews: 20,
+          subscriptionStatus: 'trial',
+          trialExpiresAt: new Date(Date.now() + 86400000 * 14).toISOString(),
+          streak: 5,
+          lastLessonDate: new Date(Date.now() - 86400000).toISOString(),
+          totalWordsLearned: 47,
+          createdAt: new Date().toISOString(),
+        },
+        wordProgress: prev.wordProgress.length ? prev.wordProgress : generateMockWordProgress(),
+      }));
+    }
   };
 
-  const register = (email: string) => {
-    setState(prev => ({
-      ...prev,
-      isAuthenticated: true,
-      user: {
-        id: '1',
-        email,
-        nativeLanguage: '',
-        learningLanguage: '',
-        cefrLevel: '',
-        intensityNewWords: 5,
-        intensityReviews: 20,
-        subscriptionStatus: 'trial',
-        trialExpiresAt: new Date(Date.now() + 86400000 * 14).toISOString(),
-        streak: 0,
-        lastLessonDate: null,
-        totalWordsLearned: 0,
-        createdAt: new Date().toISOString(),
-      },
-      isOnboarded: false,
-    }));
+  const register = async (email: string, password: string = 'demo') => {
+    try {
+      await apiClient.register(email, password);
+      setState(prev => ({
+        ...prev,
+        isAuthenticated: true,
+        useMockData: false,
+        user: {
+          id: '1',
+          email,
+          nativeLanguage: '',
+          learningLanguage: '',
+          cefrLevel: '',
+          intensityNewWords: 5,
+          intensityReviews: 20,
+          subscriptionStatus: 'trial',
+          trialExpiresAt: new Date(Date.now() + 86400000 * 14).toISOString(),
+          streak: 0,
+          lastLessonDate: null,
+          totalWordsLearned: 0,
+          createdAt: new Date().toISOString(),
+        },
+        isOnboarded: false,
+      }));
+    } catch (error) {
+      console.warn('API unavailable, using mock data:', error);
+      setState(prev => ({
+        ...prev,
+        isAuthenticated: true,
+        useMockData: true,
+        user: {
+          id: '1',
+          email,
+          nativeLanguage: '',
+          learningLanguage: '',
+          cefrLevel: '',
+          intensityNewWords: 5,
+          intensityReviews: 20,
+          subscriptionStatus: 'trial',
+          trialExpiresAt: new Date(Date.now() + 86400000 * 14).toISOString(),
+          streak: 0,
+          lastLessonDate: null,
+          totalWordsLearned: 0,
+          createdAt: new Date().toISOString(),
+        },
+        isOnboarded: false,
+      }));
+    }
   };
 
   const logout = () => {
+    apiClient.clearToken();
     setState({
       user: null,
       wordProgress: [],
       currentLesson: null,
       isAuthenticated: false,
       isOnboarded: false,
+      useMockData: true,
     });
   };
 
@@ -241,7 +303,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const startLesson = (topic: string) => {
+  const startLesson = async (topic: string) => {
+    if (!state.useMockData) {
+      try {
+        const response = await apiClient.startLesson(topic) as any;
+        const cards: LessonCard[] = response.cards.map((c: any, i: number) => ({
+          id: `card-${i}`,
+          sentence: c.sentence,
+          translation: c.translation,
+          targetWords: c.target_words,
+          audioUrl: c.audio_url,
+        }));
+
+        setState(prev => ({
+          ...prev,
+          currentLesson: {
+            id: `lesson-${Date.now()}`,
+            sessionId: response.session_id,
+            topic,
+            cards,
+            currentIndex: 0,
+            startedAt: new Date().toISOString(),
+            finishedAt: null,
+            results: [],
+          },
+        }));
+        return;
+      } catch (error) {
+        console.warn('Failed to start lesson via API, using mock:', error);
+      }
+    }
+
+    // Fallback to mock data
     const sentences = MOCK_SENTENCES[topic] || MOCK_SENTENCES['food'];
     const cards: LessonCard[] = sentences.map((s, i) => ({
       id: `card-${i}`,
@@ -254,6 +347,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...prev,
       currentLesson: {
         id: `lesson-${Date.now()}`,
+        sessionId: Date.now(),
         topic,
         cards,
         currentIndex: 0,
@@ -264,7 +358,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const submitAnswer = (cardIndex: number, translation: string, evaluations: { word: string; correct: boolean }[]) => {
+  const submitAnswer = async (cardIndex: number, translation: string, evaluations: { word: string; correct: boolean }[]) => {
+    if (!state.useMockData && state.currentLesson) {
+      try {
+        const response = await apiClient.submitAnswer(
+          state.currentLesson.sessionId,
+          cardIndex,
+          translation
+        ) as any;
+        evaluations = response.evaluations.map((e: any) => ({
+          word: e.word,
+          correct: e.correct,
+        }));
+      } catch (error) {
+        console.warn('Failed to submit answer via API, using local evaluation:', error);
+      }
+    }
+
     setState(prev => {
       if (!prev.currentLesson) return prev;
       const newResults = [...prev.currentLesson.results];
@@ -286,11 +396,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const finishLesson = () => {
+  const finishLesson = async () => {
+    if (!state.useMockData && state.currentLesson) {
+      try {
+        await apiClient.finishLesson(state.currentLesson.sessionId);
+      } catch (error) {
+        console.warn('Failed to finish lesson via API:', error);
+      }
+    }
+
     setState(prev => {
       if (!prev.currentLesson) return prev;
       const totalCorrect = prev.currentLesson.results.reduce((sum, r) => sum + r.correct, 0);
-      const totalIncorrect = prev.currentLesson.results.reduce((sum, r) => sum + r.incorrect, 0);
 
       return {
         ...prev,
@@ -308,7 +425,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const addCustomWord = (text: string, translation: string) => {
+  const addCustomWord = async (text: string, translation: string) => {
+    if (!state.useMockData) {
+      try {
+        await apiClient.addCustomWord(text, translation);
+      } catch (error) {
+        console.warn('Failed to add word via API:', error);
+      }
+    }
+
     setState(prev => ({
       ...prev,
       wordProgress: [
